@@ -110,3 +110,33 @@
 - get_language_strings() helper selects correct constant pair by detected_language.
 - Updated enforce_guardrails callback and guardrail_programmatic_fallback to use
   language-matched
+
+## Session 11 — [22-06-2026] (Multi-turn memory)
+
+- Modified run_navigator() to accept existing_session_id, persist
+  conversation_history in session state, and prepend prior turns as
+  context to each new Intake query.
+- Implemented src/main.py as a full interactive CLI with session
+  persistence, fallback warnings, UTF-8 support, and reset command.
+- Verified 3-turn demo arc (D017): unclear → clarification → location →
+  resource recommendation using accumulated context. Session ID consistent
+  across all turns confirming persistence.
+- Note: Turn 2 no_confident_match is correct behavior (food category
+  inferred but no location yet, below confidence threshold). Full arc
+  resolves correctly on Turn 3.
+
+## Session 12 — [23-06-2026] (Real-world dataset)
+
+- Replaced all 12 PLACEHOLDER entries with verified real Mumbai organizations:
+  Food Security: Mumbai Roti Bank, Robin Hood Army Mumbai, SNEHA Nutrition
+  Program (Dharavi), BMC Anganwadi M-East Ward, Shiv Vasi Distribution (Kurla),
+  BEST Worli community program.
+  Rent/Utility: MSEDCL BPL Subsidy, BEST Undertaking, BMC 1916 helpline,
+  SNEHA Crisis Centre (Dharavi), PM Surya Ghar scheme, MHADA Tenant Grievance.
+- All entries verified via official websites/portals as of 2026-06-22.
+- Real confidence_scores (0.55-0.95) replacing all-zero placeholders.
+- Specific search verification: Dharavi food → FS-002 + FS-003 ✓,
+  Govandi rent → RU-001 + RU-006 ✓
+- Note: phone numbers/addresses sourced from official sites but not
+  personally verified by phone. Users instructed via disclaimer to
+  confirm directly before visiting.

@@ -390,23 +390,52 @@ mumbai_navigator_workflow = Workflow(
     retry_config=RetryConfig(max_attempts=3, initial_delay=5.0, max_delay=30.0)
 )
 
-async def run_navigator(query: str, session_id: str, runner: Any, session_service: Any) -> dict:
+async def run_navigator(
+    query: str,
+    session_id: str,
+    runner: Any,
+    session_service: Any,
+    existing_session_id: Optional[str] = None
+) -> dict:
     """
     Top-level entry point function that runs the mumbai_navigator_workflow
     and aggregates fallback flags into a 'fallback_used' field in its final return dict.
+    Supports persistent conversation history across turns in a session.
     """
-    await session_service.create_session(
-        app_name="app",
-        user_id="test_user",
-        session_id=session_id
-    )
+    actual_session_id = existing_session_id or session_id
     
+    session = None
+    if existing_session_id:
+        session = await session_service.get_session(
+            app_name="app",
+            user_id="test_user",
+            session_id=actual_session_id
+        )
+        
+    if not session:
+        session = await session_service.create_session(
+            app_name="app",
+            user_id="test_user",
+            session_id=actual_session_id
+        )
+        
+    history = session.state.get("conversation_history", []) if session else []
+    
+    prepended_query = query
+    if history:
+        history_lines = ["Previous conversation:"]
+        for turn in history:
+            history_lines.append(f"User: {turn['user_input']}")
+            history_lines.append(f"Assistant: {turn['response_text']}")
+        history_lines.append(f"Current query: {query}")
+        prepended_query = "\n".join(history_lines)
+        
     final_output_dict = {}
     
     async for event in runner.run_async(
         user_id="test_user",
-        session_id=session_id,
-        new_message=genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=query)])
+        session_id=actual_session_id,
+        new_message=genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=prepended_query)])
     ):
         if event.output is not None:
             if isinstance(event.output, dict):
@@ -420,7 +449,7 @@ async def run_navigator(query: str, session_id: str, runner: Any, session_servic
                     pass
 
     # Retrieve fallback flags from session state
-    session = await session_service.get_session(app_name="app", user_id="test_user", session_id=session_id)
+    session = await session_service.get_session(app_name="app", user_id="test_user", session_id=actual_session_id)
     
     intake_fallback = False
     matcher_fallback = False
@@ -431,11 +460,22 @@ async def run_navigator(query: str, session_id: str, runner: Any, session_servic
         matcher_fallback = session.state.get("_matcher_fallback", False)
         guardrail_fallback = session.state.get("_guardrail_fallback", False)
         
+        # Save updated turn back to session state's history
+        history.append({
+            "user_input": query,
+            "response_text": final_output_dict.get("response_text", "")
+        })
+        await session_service.append_event(
+            session,
+            Event(state={"conversation_history": history})
+        )
+        
     return {
         "response_text": final_output_dict.get("response_text", ""),
         "response_type": final_output_dict.get("response_type", "zero_results"),
         "disclaimer_shown": final_output_dict.get("disclaimer_shown", False),
         "resources_included": final_output_dict.get("resources_included", []),
+        "session_id": actual_session_id,
         "fallback_used": {
             "intake": intake_fallback,
             "matcher": matcher_fallback,

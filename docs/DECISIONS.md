@@ -190,3 +190,18 @@ language matching the user's dominant input language:
   field ("english", "hindi_devanagari", "romanized_hindi", "hinglish",
   "marathi"). Guardrail agent reads this field and generates response_text
   in the appropriate language/register.
+
+## D017 — Multi-turn memory implementation approach
+
+**Date:** 22-06-2026
+**Decision:** Implement multi-turn memory by persisting session_id across
+conversation turns within a single user session (reusing the same
+InMemorySessionService session rather than creating a new one per query).
+The Intake agent receives the full conversation history as context, allowing
+it to merge information across turns (e.g. category from turn 1 + location
+from turn 3) into a single IntakeOutput.
+**Scope:** In-session memory only (conversation history within one browser
+session). Cross-session persistence (remembering a user across days) is
+explicitly out of scope for this MVP.
+**Demo scenario:** unclear input → clarification → location follow-up →
+full resource recommendation using accumulated context.
