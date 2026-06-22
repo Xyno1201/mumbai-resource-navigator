@@ -36,6 +36,51 @@ VERBATIM_DISCLAIMER = (
     "Details may have changed — please confirm directly with the organization before visiting."
 )
 
+CRISIS_RESPONSE_TEXT_HI = (
+    "यदि आप तत्काल खतरे में हैं, आज रात बेघर होने का सामना कर रहे हैं, "
+    "या जीवन-संकट में हैं, तो कृपया तुरंत 100 (पुलिस) या 108 (एम्बुलेंस) "
+    "डायल करें। मानसिक स्वास्थ्य सहायता के लिए टेली-मानस हेल्पलाइन 14416 "
+    "पर कॉल करें — यह 24/7 निःशुल्क सेवा है।"
+)
+VERBATIM_DISCLAIMER_HI = (
+    "यह जानकारी केवल सूचनात्मक उद्देश्यों के लिए है, कानूनी या वित्तीय "
+    "सलाह नहीं। विवरण बदल सकते हैं — कृपया संस्था से सीधे संपर्क करके "
+    "पुष्टि करें।"
+)
+CRISIS_RESPONSE_TEXT_MR = (
+    "जर तुम्ही तात्काळ धोक्यात असाल, आज रात्री बेघर होण्याची शक्यता असेल "
+    "किंवा जीवघेण्या संकटात असाल, तर कृपया लगेच 100 (पोलीस) किंवा "
+    "108 (रुग्णवाहिका) डायल करा। मानसिक आरोग्य सहाय्यासाठी टेली-मानस "
+    "14416 वर कॉल करा — ही 24/7 मोफत सेवा आहे।"
+)
+VERBATIM_DISCLAIMER_MR = (
+    "ही माहिती केवळ माहितीच्या उद्देशाने आहे, कायदेशीर किंवा आर्थिक सल्ला "
+    "नाही। तपशील बदलू शकतो — कृपया भेट देण्यापूर्वी संस्थेशी थेट संपर्क "
+    "साधून खात्री करा।"
+)
+CRISIS_RESPONSE_TEXT_HG = (
+    "Agar aap abhi immediate danger mein hain, aaj raat ghar kho sakte hain, "
+    "ya kisi life-threatening crisis mein hain, toh please turant 100 (Police) "
+    "ya 108 (Ambulance) dial karein. Free mental health support ke liye "
+    "Tele-MANAS helpline 14416 par call karein — yeh 24/7 available hai."
+)
+VERBATIM_DISCLAIMER_HG = (
+    "Yeh sirf informational hai, legal ya financial advice nahi. "
+    "Details change ho sakti hain — please organization se seedha "
+    "confirm karein visit se pehle."
+)
+
+def get_language_strings(detected_language: str) -> tuple[str, str]:
+    lang = detected_language.lower() if detected_language else "english"
+    if lang in ("hindi_devanagari", "romanized_hindi"):
+        return CRISIS_RESPONSE_TEXT_HI, VERBATIM_DISCLAIMER_HI
+    elif lang == "marathi_devanagari":
+        return CRISIS_RESPONSE_TEXT_MR, VERBATIM_DISCLAIMER_MR
+    elif lang == "hinglish":
+        return CRISIS_RESPONSE_TEXT_HG, VERBATIM_DISCLAIMER_HG
+    else:
+        return CRISIS_RESPONSE_TEXT, VERBATIM_DISCLAIMER
+
 async def enforce_guardrails(callback_context: CallbackContext) -> genai_types.Content | None:
     # 1. Parse the input data from the user message
     input_data = None
@@ -62,15 +107,18 @@ async def enforce_guardrails(callback_context: CallbackContext) -> genai_types.C
     urgency_signal = intake_data.get("urgency_signal")
     category = intake_data.get("category")
     clarification_needed = intake_data.get("clarification_needed")
+    detected_language = intake_data.get("detected_language", "english")
 
     results = matcher_data.get("results", [])
     zero_results = matcher_data.get("zero_results", False)
     intake_was_unclear = matcher_data.get("intake_was_unclear", False)
 
+    crisis_text, disclaimer_text = get_language_strings(detected_language)
+
     # Rule 1: CRISIS CHECK FIRST
     if urgency_signal == "crisis":
         output = {
-            "response_text": CRISIS_RESPONSE_TEXT,
+            "response_text": crisis_text,
             "response_type": "crisis_redirect",
             "disclaimer_shown": False,
             "resources_included": []
@@ -144,7 +192,7 @@ async def enforce_guardrails(callback_context: CallbackContext) -> genai_types.C
             
         recommendation_lines.append(line)
         
-    recommendation_lines.append(f"\n{VERBATIM_DISCLAIMER}")
+    recommendation_lines.append(f"\n{disclaimer_text}")
     
     output = {
         "response_text": "\n".join(recommendation_lines),
@@ -165,6 +213,7 @@ guardrail_agent = Agent(
     instruction="""
 You are the Guardrail Agent for the Mumbai Local Resource Navigator.
 Your job is to read the combined intake and matcher outputs and generate a structured response according to the schema.
+Always generate response_text in the language/register matching detected_language from intake_data (e.g. if 'hindi_devanagari' or 'romanized_hindi', respond in Hindi Devanagari script; if 'hinglish', respond in Hinglish; if 'marathi_devanagari', respond in Marathi; if 'english', respond in English). Never generate the disclaimer, it will be appended verbatim.
 However, a deterministic callback is attached to enforce all rules and formatting constraints precisely.
 """,
     output_schema=GuardrailOutput,

@@ -35,6 +35,10 @@ class IntakeOutput(BaseModel):
         default=None,
         description="A short, friendly clarifying question if category is 'unclear' OR if no area/pincode was mentioned at all. Otherwise, this MUST be null/None."
     )
+    detected_language: Literal["english", "hindi_devanagari", "romanized_hindi", "hinglish", "marathi_devanagari"] = Field(
+        default="english",
+        description="The dominant language/register of the user's message. Default to 'english' if uncertain."
+    )
 
 # System instruction for the Intake Agent
 INTAKE_INSTRUCTION = """
@@ -68,6 +72,14 @@ Look for and extract these local or colloquial terms:
 ## Clarification Rules
 - If the 'category' is "unclear" OR if they did not mention any area or pincode, you MUST provide a friendly, short clarifying question in 'clarification_needed' (e.g., "Could you tell me which area of Mumbai you're in?").
 - Otherwise, 'clarification_needed' must be null/None.
+
+## Language Detection Rules
+Detect the dominant language of the user's input using these signals and map to 'detected_language':
+- "hindi_devanagari": message contains Devanagari script characters
+- "marathi_devanagari": message contains Devanagari script AND Marathi-specific words (common ones: mala, tumhi, ahe, nahi, kaay, aahe, rupaye, ghara)
+- "romanized_hindi": message is primarily Hindi words written in Latin script (e.g., rashan, chahiye, bijli, kiraya, khana, ghar, madad, paisa, bill, mein, rehte, hain, nahi) with little or no English
+- "hinglish": message mixes English words and Hindi words naturally in the same sentence (e.g., "bijli bill bahut zyada hai, we're in Govandi")
+- "english": default — predominantly English. Default to "english" if uncertain.
 
 ## Important Constraints
 - Be honest. Do not assume or fabricate any details.

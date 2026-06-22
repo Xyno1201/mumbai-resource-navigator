@@ -44,11 +44,35 @@ def intake_programmatic_fallback(query: str) -> dict:
         ration_card_status = "none"
         
     urgency_signal = "routine"
-    if any(k in query_lower for k in ["starving", "lose our home", "evicted tonight", "crisis", "emergency"]):
+    if any(k in query_lower for k in ["starving", "lose our home", "evicted tonight", "crisis", "emergency", "घर जा सकता है", "बेघर", "भूख", "संकट", "खतरे", "मदद करो"]):
         urgency_signal = "crisis"
     elif any(k in query_lower for k in ["tomorrow", "next week", "urgent"]):
         urgency_signal = "urgent"
+
+    # Multilingual support: detect language programmatically
+    has_devanagari = any('\u0900' <= c <= '\u097f' for c in query)
+    if has_devanagari:
+        marathi_dev = ["मला", "तुम्ही", "आहे", "नाही", "काय", "रुपये", "घरा"]
+        marathi_lat = ["mala", "tumhi", "ahe", "nahi", "kaay", "aahe", "rupaye", "ghara"]
+        if any(w in query_lower for w in marathi_dev + marathi_lat):
+            detected_language = "marathi_devanagari"
+        else:
+            detected_language = "hindi_devanagari"
+    else:
+        hindi_vocab = {"rashan", "chahiye", "bijli", "kiraya", "khana", "ghar", "madad", "paisa", "bill", "mein", "rehte", "hain", "nahi", "zyada", "bahut", "aaj", "raat", "maddad", "rupaye"}
+        words = set(query_lower.replace(",", " ").replace(".", " ").split())
+        hindi_matches = words.intersection(hindi_vocab)
         
+        english_vocab = {"need", "don't", "have", "we're", "lose", "home", "tonight", "please", "help", "the", "and", "under", "near"}
+        english_matches = words.intersection(english_vocab)
+        
+        if hindi_matches and english_matches:
+            detected_language = "hinglish"
+        elif hindi_matches:
+            detected_language = "romanized_hindi"
+        else:
+            detected_language = "english"
+            
     return {
         "category": category,
         "areas": areas,
@@ -57,6 +81,7 @@ def intake_programmatic_fallback(query: str) -> dict:
         "income_monthly_inr": None,
         "urgency_signal": urgency_signal,
         "detected_local_terms": [],
+        "detected_language": detected_language,
         "clarification_needed": "Could you tell me which area of Mumbai you're in?" if not areas else None
     }
 
@@ -119,7 +144,7 @@ def matcher_programmatic_fallback(intake_data: dict) -> dict:
     }
 
 def guardrail_programmatic_fallback(guardrail_input: dict) -> dict:
-    from src.agents.guardrail_agent import CRISIS_RESPONSE_TEXT, VERBATIM_DISCLAIMER
+    from src.agents.guardrail_agent import get_language_strings
     
     intake_data = guardrail_input.get("intake_data", {})
     matcher_data = guardrail_input.get("matcher_data", {})
@@ -127,6 +152,9 @@ def guardrail_programmatic_fallback(guardrail_input: dict) -> dict:
     urgency_signal = intake_data.get("urgency_signal")
     category = intake_data.get("category")
     clarification_needed = intake_data.get("clarification_needed")
+    detected_language = intake_data.get("detected_language", "english")
+    
+    crisis_text, disclaimer_text = get_language_strings(detected_language)
     
     results = matcher_data.get("results", [])
     zero_results = matcher_data.get("zero_results", False)
@@ -134,7 +162,7 @@ def guardrail_programmatic_fallback(guardrail_input: dict) -> dict:
     
     if urgency_signal == "crisis":
         return {
-            "response_text": CRISIS_RESPONSE_TEXT,
+            "response_text": crisis_text,
             "response_type": "crisis_redirect",
             "disclaimer_shown": False,
             "resources_included": []
@@ -187,7 +215,7 @@ def guardrail_programmatic_fallback(guardrail_input: dict) -> dict:
             
         recommendation_lines.append(line)
         
-    recommendation_lines.append(f"\n{VERBATIM_DISCLAIMER}")
+    recommendation_lines.append(f"\n{disclaimer_text}")
     
     return {
         "response_text": "\n".join(recommendation_lines),
@@ -282,7 +310,8 @@ def prepare_skip(ctx: Context, node_input: Any = None) -> Event:
             "results": [],
             "zero_results": True,
             "intake_was_unclear": intake_data.get("category") == "unclear" if intake_data else True
-        }
+        },
+        "response_language_instruction": f"Please generate the response_text in the language/register matching detected_language ({intake_data.get('detected_language', 'english')}). Never generate the disclaimer, it will be appended verbatim."
     }
     return Event(
         output=json.dumps(guardrail_input),
@@ -307,7 +336,8 @@ def prepare_match(ctx: Context, node_input: Any = None) -> Event:
 
     guardrail_input = {
         "intake_data": intake_data,
-        "matcher_data": matcher_data
+        "matcher_data": matcher_data,
+        "response_language_instruction": f"Please generate the response_text in the language/register matching detected_language ({intake_data.get('detected_language', 'english')}). Never generate the disclaimer, it will be appended verbatim."
     }
     return Event(
         output=json.dumps(guardrail_input),

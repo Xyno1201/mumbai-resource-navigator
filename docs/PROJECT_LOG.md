@@ -100,3 +100,13 @@
   context (see D015). Output is still correct via programmatic fallback.
   Accepted for MVP, logged as future refactor.
 - Screenshots captured for writeup and demo video.
+
+## Session 10 — [22-06-2026] (Multilingual support)
+
+- Added detected_language field to IntakeOutput schema (english, hindi_devanagari,
+  romanized_hindi, hinglish, marathi_devanagari).
+- Added 6 new constants to guardrail_agent.py: crisis + disclaimer strings for
+  Hindi (Devanagari), Marathi (Devanagari), and Hinglish — never LLM-generated.
+- get_language_strings() helper selects correct constant pair by detected_language.
+- Updated enforce_guardrails callback and guardrail_programmatic_fallback to use
+  language-matched
