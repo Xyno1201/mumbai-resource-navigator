@@ -140,3 +140,17 @@
 - Note: phone numbers/addresses sourced from official sites but not
   personally verified by phone. Users instructed via disclaimer to
   confirm directly before visiting.
+
+## Session 13 — [23-06-2026] (get_resource_details follow-up flow)
+
+- Added detail_request and requested_resource_id fields to IntakeOutput.
+- Added get_details workflow node calling get_resource_details via MCP server.
+- route_intake now branches to get_details when detail_request is True.
+- Guardrail formats detail responses with real address, phone, website,
+  application_process as numbered list, documents required, disclaimer.
+- Verified 3-turn flow: search Dharavi food → 2 real results (FS-002, FS-003)
+  → "tell me more about first one" → SNEHA full details with real address
+  (+91 9892253038, 310 3rd Floor Urban Health Center Dharavi) → document
+  follow-up correctly returns same detail card.
+- Both MCP tools (search_resources + get_resource_details) now demonstrated
+  in a real conversation flow.

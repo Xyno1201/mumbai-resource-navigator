@@ -39,6 +39,14 @@ class IntakeOutput(BaseModel):
         default="english",
         description="The dominant language/register of the user's message. Default to 'english' if uncertain."
     )
+    detail_request: bool = Field(
+        default=False,
+        description="True when user is asking for more details about a previously shown resource rather than a new search."
+    )
+    requested_resource_id: Optional[str] = Field(
+        default=None,
+        description="The resource_id the user is asking about (e.g. 'FS-001'), extracted from context if the user references a resource name or 'the first one' / 'that one'."
+    )
 
 # System instruction for the Intake Agent
 INTAKE_INSTRUCTION = """
@@ -80,6 +88,16 @@ Detect the dominant language of the user's input using these signals and map to 
 - "romanized_hindi": message is primarily Hindi words written in Latin script (e.g., rashan, chahiye, bijli, kiraya, khana, ghar, madad, paisa, bill, mein, rehte, hain, nahi) with little or no English
 - "hinglish": message mixes English words and Hindi words naturally in the same sentence (e.g., "bijli bill bahut zyada hai, we're in Govandi")
 - "english": default — predominantly English. Default to "english" if uncertain.
+
+## Detail Request and Resource ID Extraction Rules
+- Detect 'detail_request' (set to True) if the user's current query is asking for details, contact info, address, website, phone number, application process, or documents needed for a resource that was recommended in the previous turns of the conversation history.
+- Signals include phrases like: "tell me more", "how do I contact", "address", "phone number", "how to apply", "documents needed", "more details", "website" (and their Hindi/Marathi equivalents).
+- If 'detail_request' is True, extract the 'requested_resource_id' from the conversation history. Look at the resources shown in the previous assistant turns.
+  - If the user uses a resource name (e.g. "Mumbai Roti Bank" or "SNEHA Nutrition") or its ID (e.g. "FS-001"), match it to the correct resource ID from history.
+  - If the user says "the first one", "the first", "that one", or similar, extract the ID of the first resource recommended/listed in the previous assistant's response.
+  - If multiple resources were shown/recommended in the previous turn and the user's request is ambiguous (e.g., "tell me more" without specifying which one), default 'requested_resource_id' to the first one shown and set 'clarification_needed' to a friendly note explaining that you defaulted to the first one (e.g., "Showing details for the first option. Please let me know if you wanted the other one.").
+  - If the user is asking a follow-up question about the resource that was just detailed/shown in the previous turn, use that same resource ID.
+  - If no resource ID can be found/inferred from context, leave 'requested_resource_id' as null/None.
 
 ## Important Constraints
 - Be honest. Do not assume or fabricate any details.

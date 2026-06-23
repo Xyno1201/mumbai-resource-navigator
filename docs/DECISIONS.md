@@ -205,3 +205,18 @@ session). Cross-session persistence (remembering a user across days) is
 explicitly out of scope for this MVP.
 **Demo scenario:** unclear input → clarification → location follow-up →
 full resource recommendation using accumulated context.
+
+## D018 — get_resource_details follow-up flow
+
+**Date:** 22-06-2026
+**Decision:** Add a detail_request detection path to the workflow. When the
+Intake agent detects the user is asking for more information about a
+previously shown resource (rather than starting a new search), the workflow
+calls get_resource_details via the MCP server and returns the full entry
+(address, phone, website, application_process, documents required).
+**Detection signals:** phrases like "tell me more", "how do I contact",
+"what's the address", "more details", "how to apply", "documents needed",
+"phone number" combined with a resource_id or resource name in session state.
+**Implementation:** Add detail_request: bool and requested_resource_id: str
+fields to IntakeOutput. If detail_request is true, workflow bypasses Matcher
+entirely and calls a new get_details node instead.
