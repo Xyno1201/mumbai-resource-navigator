@@ -15,7 +15,7 @@ if project_root not in sys.path:
 # Import the agents and schemas
 from src.agents.intake_agent import intake_agent, IntakeOutput
 from src.agents.matcher_agent import matcher_agent, MatcherOutput
-from src.agents.guardrail_agent import guardrail_agent, GuardrailOutput
+from src.agents.guardrail_agent import enforce_guardrails_logic, GuardrailOutput
 
 # Programmatic fallbacks for resilient execution when LLM quota is exhausted
 
@@ -88,9 +88,7 @@ def intake_programmatic_fallback(query: str) -> dict:
     current_query = lines[-1] if lines else query
     current_query_lower = current_query.lower()
     
-    has_history = "Previous conversation:" in query
-    
-    if has_history and any(sig in current_query_lower for sig in detail_signals):
+    if any(sig in current_query_lower for sig in detail_signals):
         detail_request = True
         import re
         all_ids = re.findall(r"\b(FS-\d+|RU-\d+)\b", query)
@@ -107,6 +105,10 @@ def intake_programmatic_fallback(query: str) -> dict:
                 requested_resource_id = unique_ids[0]
                 if len(unique_ids) > 1:
                     clarification_needed = "Showing details for the first resource. Let me know if you wanted details for another one."
+            else:
+                requested_resource_id = None
+        else:
+            requested_resource_id = None
             
     return {
         "category": category,
@@ -162,6 +164,8 @@ def matcher_programmatic_fallback(intake_data: dict) -> dict:
     
     results = []
     for r in raw_results:
+        dataset_confidence = r.get("confidence_score", 0.0)
+        blended_confidence = round(0.7 * match_confidence + 0.3 * dataset_confidence, 2)
         results.append({
             "resource_id": r.get("resource_id"),
             "name": r.get("name"),
@@ -170,8 +174,8 @@ def matcher_programmatic_fallback(intake_data: dict) -> dict:
             "operating_hours": r.get("operating_hours"),
             "eligibility_unconfirmed": r.get("eligibility_unconfirmed", True),
             "last_verified_date": r.get("last_verified_date"),
-            "confidence_score": r.get("confidence_score", 0.0),
-            "match_confidence": match_confidence
+            "confidence_score": dataset_confidence,
+            "match_confidence": blended_confidence
         })
         
     return {
@@ -180,198 +184,10 @@ def matcher_programmatic_fallback(intake_data: dict) -> dict:
         "intake_was_unclear": False
     }
 
-DETAIL_LABELS = {
-    "english": {
-        "name": "Resource Name",
-        "address": "Full Address",
-        "phone": "Phone",
-        "website": "Website",
-        "application_process": "Application Process",
-        "documents_required": "Documents Required",
-        "operating_hours": "Operating Hours"
-    },
-    "hindi_devanagari": {
-        "name": "संस्था का नाम",
-        "address": "पूरा पता",
-        "phone": "फ़ोन नंबर",
-        "website": "वेबसाइट",
-        "application_process": "आवेदन की प्रक्रिया",
-        "documents_required": "आवश्यक दस्तावेज़",
-        "operating_hours": "कार्यकाल का समय"
-    },
-    "romanized_hindi": {
-        "name": "Sanstha ka Naam",
-        "address": "Poora Pata",
-        "phone": "Phone Number",
-        "website": "Website",
-        "application_process": "Aavedan ki Prakriya",
-        "documents_required": "Aavashyak Dastavej",
-        "operating_hours": "Kaam karne ka Samay"
-    },
-    "hinglish": {
-        "name": "Resource Name",
-        "address": "Full Address",
-        "phone": "Phone Number",
-        "website": "Website",
-        "application_process": "Application Process",
-        "documents_required": "Required Documents",
-        "operating_hours": "Operating Hours"
-    },
-    "marathi_devanagari": {
-        "name": "संस्थेचे नाव",
-        "address": "पूर्ण पत्ता",
-        "phone": "फोन नंबर",
-        "website": "वेबसाईट",
-        "application_process": "अर्ज करण्याची प्रक्रिया",
-        "documents_required": "आवश्यक कागदपत्रे",
-        "operating_hours": "कामाची वेळ"
-    }
-}
-
-def format_detail_response(detail_data: dict, detected_language: str) -> dict:
-    from src.agents.guardrail_agent import get_language_strings
-    
-    # Get the language-specific disclaimer
-    _, disclaimer_text = get_language_strings(detected_language)
-    
-    # Get labels
-    lang = detected_language.lower() if detected_language else "english"
-    labels = DETAIL_LABELS.get(lang, DETAIL_LABELS["english"])
-    
-    name = detail_data.get("name", "N/A")
-    contact = detail_data.get("contact", {})
-    address = contact.get("address", "N/A")
-    phone = contact.get("phone", "N/A")
-    website = contact.get("website", "N/A")
-    
-    # Process application process as numbered list
-    app_process_raw = detail_data.get("application_process", [])
-    if isinstance(app_process_raw, list):
-        app_process = "\n".join(f"{i+1}. {step}" for i, step in enumerate(app_process_raw))
-    else:
-        app_process = str(app_process_raw)
-        
-    # Process documents required
-    eligibility = detail_data.get("eligibility", {})
-    docs_raw = eligibility.get("documentation_required", [])
-    if isinstance(docs_raw, list):
-        docs = ", ".join(d.replace("_", " ") for d in docs_raw)
-    else:
-        docs = str(docs_raw)
-        
-    operating_hours = detail_data.get("operating_hours", "N/A")
-    
-    # Generate the formatted response text
-    response_lines = [
-        f"**{labels['name']}:** {name}",
-        f"**{labels['address']}:** {address}",
-        f"**{labels['phone']}:** {phone}",
-        f"**{labels['website']}:** {website}",
-        f"**{labels['application_process']}:**\n{app_process}",
-        f"**{labels['documents_required']}:** {docs}",
-        f"**{labels['operating_hours']}:** {operating_hours}",
-        "",
-        disclaimer_text
-    ]
-    
-    response_text = "\n".join(response_lines)
-    
-    return {
-        "response_text": response_text,
-        "response_type": "resource_recommendation",
-        "disclaimer_shown": True,
-        "resources_included": [detail_data.get("resource_id")] if detail_data.get("resource_id") else []
-    }
-
 def get_details_programmatic_fallback(requested_resource_id: str) -> dict:
     from mcp_server.server import get_resource_details
     return get_resource_details(requested_resource_id)
 
-def guardrail_programmatic_fallback(guardrail_input: dict) -> dict:
-    from src.agents.guardrail_agent import get_language_strings
-    
-    intake_data = guardrail_input.get("intake_data", {})
-    matcher_data = guardrail_input.get("matcher_data", {})
-    
-    urgency_signal = intake_data.get("urgency_signal")
-    category = intake_data.get("category")
-    clarification_needed = intake_data.get("clarification_needed")
-    detected_language = intake_data.get("detected_language", "english")
-    
-    # Check if this is a detail request
-    if guardrail_input.get("is_detail_request"):
-        detail_data = guardrail_input.get("detail_data", {})
-        return format_detail_response(detail_data, detected_language)
-        
-    crisis_text, disclaimer_text = get_language_strings(detected_language)
-    
-    results = matcher_data.get("results", [])
-    zero_results = matcher_data.get("zero_results", False)
-    intake_was_unclear = matcher_data.get("intake_was_unclear", False)
-    
-    if urgency_signal == "crisis":
-        return {
-            "response_text": crisis_text,
-            "response_type": "crisis_redirect",
-            "disclaimer_shown": False,
-            "resources_included": []
-        }
-        
-    if intake_was_unclear or category == "unclear":
-        q_text = clarification_needed or "Could you clarify what kind of support you need?"
-        return {
-            "response_text": q_text,
-            "response_type": "clarification_request",
-            "disclaimer_shown": False,
-            "resources_included": []
-        }
-        
-    if zero_results or not results:
-        msg = f"We could not find any verified resources in our database matching your request for {category.replace('_', ' ')}."
-        if intake_data.get("areas"):
-            msg += f" in the neighborhood of {', '.join(intake_data['areas'])}."
-        msg += " Please try checking a broader area or neighborhood."
-        return {
-            "response_text": msg,
-            "response_type": "zero_results",
-            "disclaimer_shown": False,
-            "resources_included": []
-        }
-        
-    confident_results = [r for r in results if r.get("match_confidence", 0.0) >= 0.5]
-    if not confident_results:
-        msg = "We found some potential matches in our database, but they do not confidently fit your criteria. To avoid directing you to the wrong service, we are not showing these results. Please try broadening your search locality."
-        return {
-            "response_text": msg,
-            "response_type": "no_confident_match",
-            "disclaimer_shown": False,
-            "resources_included": []
-        }
-        
-    recommendation_lines = ["Here are the verified resources that match your needs:\n"]
-    resource_ids = []
-    
-    for r in confident_results:
-        r_id = r.get("resource_id")
-        resource_ids.append(r_id)
-        
-        line = f"- **{r.get('name')}** (ID: {r_id})\n"
-        line += f"  *Service:* {r.get('short_description')}\n"
-        line += f"  *Hours:* {r.get('operating_hours')}\n"
-        
-        if r.get("eligibility_unconfirmed"):
-            line += "  *Note:* Please confirm eligibility (e.g. ration card status or income) directly with the organization.\n"
-            
-        recommendation_lines.append(line)
-        
-    recommendation_lines.append(f"\n{disclaimer_text}")
-    
-    return {
-        "response_text": "\n".join(recommendation_lines),
-        "response_type": "resource_recommendation",
-        "disclaimer_shown": True,
-        "resources_included": resource_ids
-    }
 
 # 1. Intake execution wrapper with exception handling
 @node(rerun_on_resume=True)
@@ -507,6 +323,23 @@ async def get_details(ctx: Context, node_input: Any = None) -> Event:
         
     requested_resource_id = intake_data.get("requested_resource_id")
     
+    if not requested_resource_id:
+        last_shown = ctx.state.get("last_shown_resource_ids")
+        if last_shown and isinstance(last_shown, list):
+            requested_resource_id = last_shown[0]
+            
+    if not requested_resource_id:
+        clarification_response = {
+            "response_text": "I'm not sure which resource you'd like more details on. Could you mention the name or ID of the organization?",
+            "response_type": "clarification_request",
+            "disclaimer_shown": False,
+            "resources_included": []
+        }
+        return Event(
+            output=clarification_response,
+            state={"guardrail_input": clarification_response}
+        )
+    
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     python_exe = os.path.abspath(os.path.join(project_root, "venv", "Scripts", "python.exe"))
     server_script = os.path.abspath(os.path.join(project_root, "mcp_server", "server.py"))
@@ -570,7 +403,7 @@ async def get_details(ctx: Context, node_input: Any = None) -> Event:
         }
     )
 
-# 6. Guardrail execution wrapper with exception handling
+# 6. Guardrail execution wrapper
 @node(rerun_on_resume=True)
 async def run_guardrail(ctx: Context, node_input: Any = None) -> Event:
     guardrail_input = None
@@ -585,28 +418,31 @@ async def run_guardrail(ctx: Context, node_input: Any = None) -> Event:
     if not guardrail_input:
         guardrail_input = ctx.state.get("guardrail_input", {})
 
-    if isinstance(guardrail_input, dict) and guardrail_input.get("is_detail_request"):
-        detail_data = guardrail_input.get("detail_data", {})
-        intake_data = guardrail_input.get("intake_data", {})
-        detected_language = intake_data.get("detected_language", "english")
-        formatted = format_detail_response(detail_data, detected_language)
-        return Event(output=formatted, state={"_guardrail_fallback": False})
+    # If it is already a finalized response (e.g. from the get_details clarification early return), return it directly.
+    if isinstance(guardrail_input, dict) and "response_type" in guardrail_input and "response_text" in guardrail_input:
+        state = {"_guardrail_fallback": False}
+        if guardrail_input.get("response_type") == "resource_recommendation":
+            state["last_shown_resource_ids"] = guardrail_input.get("resources_included", [])
+        return Event(output=guardrail_input, state=state)
 
-    try:
-        result = await ctx.run_node(guardrail_agent, node_input=json.dumps(guardrail_input))
-        guardrail_output = None
-        if isinstance(result, dict):
-            guardrail_output = result
-        elif hasattr(result, "model_dump"):
-            guardrail_output = result.model_dump()
-        else:
-            guardrail_output = json.loads(str(result))
-            
-        return Event(output=guardrail_output, state={"_guardrail_fallback": False})
-    except Exception as e:
-        print(f"Guardrail Agent LLM run failed ({e}). Using programmatic fallback.")
-        fallback_data = guardrail_programmatic_fallback(guardrail_input)
-        return Event(output=fallback_data, state={"_guardrail_fallback": True})
+    result = enforce_guardrails_logic(guardrail_input)
+    state = {"_guardrail_fallback": False}
+    
+    # Store recommended resource IDs in session state if it's a resource_recommendation
+    res_type = None
+    res_included = []
+    if isinstance(result, dict):
+        res_type = result.get("response_type")
+        res_included = result.get("resources_included", [])
+    elif hasattr(result, "response_type"):
+        res_type = getattr(result, "response_type")
+        res_included = getattr(result, "resources_included", [])
+        
+    if res_type == "resource_recommendation":
+        state["last_shown_resource_ids"] = res_included
+        
+    return Event(output=result, state=state)
+
 
 # Instantiate the Workflow representing the full Mumbai Resource Navigator agent
 mumbai_navigator_workflow = Workflow(

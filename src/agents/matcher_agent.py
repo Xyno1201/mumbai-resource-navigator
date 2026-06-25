@@ -150,7 +150,9 @@ async def calculate_matcher_output(callback_context: CallbackContext) -> genai_t
         data = json.loads(raw_text)
         results = data.get("results", [])
         for r in results:
-            r["match_confidence"] = match_confidence
+            dataset_confidence = r.get("confidence_score", 0.0)
+            blended_confidence = round(0.7 * match_confidence + 0.3 * dataset_confidence, 2)
+            r["match_confidence"] = blended_confidence
             # Ensure eligibility_unconfirmed field exists (from tool response)
             if "eligibility_unconfirmed" not in r:
                 r["eligibility_unconfirmed"] = True

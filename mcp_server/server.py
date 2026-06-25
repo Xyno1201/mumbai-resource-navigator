@@ -19,6 +19,15 @@ except Exception as e:
     import sys
     print(f"Error loading resources.json from {resources_path}: {e}", file=sys.stderr)
 
+def area_matches(query_area: str, resource_area: str) -> bool:
+    """Match on whole tokens only — prevents 'Parel' matching 'Lower Parel'."""
+    import re
+    def tokenize(s):
+        return set(re.split(r'[\s,\-/]+', s.lower()))
+    q_tokens = tokenize(query_area)
+    r_tokens = tokenize(resource_area)
+    return bool(q_tokens & r_tokens)
+
 @mcp.tool()
 def search_resources(
     category: str,
@@ -32,7 +41,7 @@ def search_resources(
     
     Parameters:
     - category (str): exactly "food_security" or "rent_utility_support".
-    - areas (list of str, optional): locality names to match against coverage areas (case-insensitive substring match).
+    - areas (list of str, optional): locality names to match against coverage areas (case-insensitive token match).
     - pincodes (list of str, optional): exact match against coverage pincodes.
     - ration_card_status (str, optional): one of "APL", "BPL", "AAY", "none", or omitted/unknown.
     - income_monthly_inr (int, optional): user's stated monthly income.
@@ -59,9 +68,9 @@ def search_resources(
             location_filtered = True
             for q_area in areas:
                 if q_area:
-                    # check if it is a case-insensitive substring of any coverage area
+                    # check if it matches any coverage area using token matching
                     for r_area in resource.get("coverage", {}).get("areas", []):
-                        if q_area.lower() in r_area.lower():
+                        if area_matches(q_area, r_area):
                             matches_location = True
                             break
                 if matches_location:

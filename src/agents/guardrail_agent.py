@@ -81,67 +81,147 @@ def get_language_strings(detected_language: str) -> tuple[str, str]:
     else:
         return CRISIS_RESPONSE_TEXT, VERBATIM_DISCLAIMER
 
-async def enforce_guardrails(callback_context: CallbackContext) -> genai_types.Content | None:
-    # 1. Parse the input data from the user message
-    input_data = None
-    for event in callback_context.session.events:
-        if event.content and event.content.role == "user" and event.content.parts:
-            text = event.content.parts[0].text
-            try:
-                input_data = json.loads(text)
-                break
-            except Exception:
-                pass
 
-    if not input_data:
-        # Fallback to state if present
-        input_data = callback_context.state.get("guardrail_input")
+DETAIL_LABELS = {
+    "english": {
+        "name": "Resource Name",
+        "address": "Full Address",
+        "phone": "Phone",
+        "website": "Website",
+        "application_process": "Application Process",
+        "documents_required": "Documents Required",
+        "operating_hours": "Operating Hours"
+    },
+    "hindi_devanagari": {
+        "name": "संस्था का नाम",
+        "address": "पूरा पता",
+        "phone": "फ़ोन नंबर",
+        "website": "वेबसाइट",
+        "application_process": "आवेदन की प्रक्रिया",
+        "documents_required": "आवश्यक दस्तावेज़",
+        "operating_hours": "कार्यकाल का समय"
+    },
+    "romanized_hindi": {
+        "name": "Sanstha ka Naam",
+        "address": "Poora Pata",
+        "phone": "Phone Number",
+        "website": "Website",
+        "application_process": "Aavedan ki Prakriya",
+        "documents_required": "Aavashyak Dastavej",
+        "operating_hours": "Kaam karne ka Samay"
+    },
+    "hinglish": {
+        "name": "Resource Name",
+        "address": "Full Address",
+        "phone": "Phone Number",
+        "website": "Website",
+        "application_process": "Application Process",
+        "documents_required": "Required Documents",
+        "operating_hours": "Operating Hours"
+    },
+    "marathi_devanagari": {
+        "name": "संस्थेचे नाव",
+        "address": "पूर्ण पत्ता",
+        "phone": "फोन नंबर",
+        "website": "वेबसाईट",
+        "application_process": "अर्ज करण्याची प्रक्रिया",
+        "documents_required": "आवश्यक कागदपत्रे",
+        "operating_hours": "कामाची वेळ"
+    }
+}
 
-    if not input_data:
-        return None
+def format_detail_response(detail_data: dict, detected_language: str) -> dict:
+    # Get the language-specific disclaimer
+    _, disclaimer_text = get_language_strings(detected_language)
+    
+    # Get labels
+    lang = detected_language.lower() if detected_language else "english"
+    labels = DETAIL_LABELS.get(lang, DETAIL_LABELS["english"])
+    
+    name = detail_data.get("name", "N/A")
+    contact = detail_data.get("contact", {})
+    address = contact.get("address", "N/A")
+    phone = contact.get("phone", "N/A")
+    website = contact.get("website", "N/A")
+    
+    # Process application process as numbered list
+    app_process_raw = detail_data.get("application_process", [])
+    if isinstance(app_process_raw, list):
+        app_process = "\n".join(f"{i+1}. {step}" for i, step in enumerate(app_process_raw))
+    else:
+        app_process = str(app_process_raw)
+        
+    # Process documents required
+    eligibility = detail_data.get("eligibility", {})
+    docs_raw = eligibility.get("documentation_required", [])
+    if isinstance(docs_raw, list):
+        docs = ", ".join(d.replace("_", " ") for d in docs_raw)
+    else:
+        docs = str(docs_raw)
+        
+    operating_hours = detail_data.get("operating_hours", "N/A")
+    
+    # Generate the formatted response text
+    response_lines = [
+        f"**{labels['name']}:** {name}",
+        f"**{labels['address']}:** {address}",
+        f"**{labels['phone']}:** {phone}",
+        f"**{labels['website']}:** {website}",
+        f"**{labels['application_process']}:**\n{app_process}",
+        f"**{labels['documents_required']}:** {docs}",
+        f"**{labels['operating_hours']}:** {operating_hours}",
+        "",
+        disclaimer_text
+    ]
+    
+    response_text = "\n".join(response_lines)
+    
+    return {
+        "response_text": response_text,
+        "response_type": "resource_recommendation",
+        "disclaimer_shown": True,
+        "resources_included": [detail_data.get("resource_id")] if detail_data.get("resource_id") else []
+    }
 
-    # Extract intake and matcher data
-    intake_data = input_data.get("intake_data", {})
-    matcher_data = input_data.get("matcher_data", {})
-
+def enforce_guardrails_logic(guardrail_input: dict) -> dict:
+    intake_data = guardrail_input.get("intake_data", {})
+    matcher_data = guardrail_input.get("matcher_data", {})
+    
     urgency_signal = intake_data.get("urgency_signal")
     category = intake_data.get("category")
     clarification_needed = intake_data.get("clarification_needed")
     detected_language = intake_data.get("detected_language", "english")
-
+    
+    # Check if this is a detail request
+    if guardrail_input.get("is_detail_request"):
+        detail_data = guardrail_input.get("detail_data", {})
+        return format_detail_response(detail_data, detected_language)
+        
+    crisis_text, disclaimer_text = get_language_strings(detected_language)
+    
     results = matcher_data.get("results", [])
     zero_results = matcher_data.get("zero_results", False)
     intake_was_unclear = matcher_data.get("intake_was_unclear", False)
-
-    crisis_text, disclaimer_text = get_language_strings(detected_language)
-
+    
     # Rule 1: CRISIS CHECK FIRST
     if urgency_signal == "crisis":
-        output = {
+        return {
             "response_text": crisis_text,
             "response_type": "crisis_redirect",
             "disclaimer_shown": False,
             "resources_included": []
         }
-        return genai_types.Content(
-            role="model",
-            parts=[genai_types.Part.from_text(text=json.dumps(output))]
-        )
-
+        
     # Rule 2: Clarification request
     if intake_was_unclear or category == "unclear":
         q_text = clarification_needed or "Could you clarify what kind of support you need?"
-        output = {
+        return {
             "response_text": q_text,
             "response_type": "clarification_request",
             "disclaimer_shown": False,
             "resources_included": []
         }
-        return genai_types.Content(
-            role="model",
-            parts=[genai_types.Part.from_text(text=json.dumps(output))]
-        )
-
+        
     # Rule 3: Zero results
     if zero_results or not results:
         msg = f"We could not find any verified resources in our database matching your request for {category.replace('_', ' ')}."
@@ -149,32 +229,24 @@ async def enforce_guardrails(callback_context: CallbackContext) -> genai_types.C
             msg += f" in the neighborhood of {', '.join(intake_data['areas'])}."
         msg += " Please try checking a broader area or neighborhood."
         
-        output = {
+        return {
             "response_text": msg,
             "response_type": "zero_results",
             "disclaimer_shown": False,
             "resources_included": []
         }
-        return genai_types.Content(
-            role="model",
-            parts=[genai_types.Part.from_text(text=json.dumps(output))]
-        )
-
+        
     # Rule 4: Filter results (match_confidence >= 0.5)
     confident_results = [r for r in results if r.get("match_confidence", 0.0) >= 0.5]
     if not confident_results:
         msg = "We found some potential matches in our database, but they do not confidently fit your criteria. To avoid directing you to the wrong service, we are not showing these results. Please try broadening your search locality."
-        output = {
+        return {
             "response_text": msg,
             "response_type": "no_confident_match",
             "disclaimer_shown": False,
             "resources_included": []
         }
-        return genai_types.Content(
-            role="model",
-            parts=[genai_types.Part.from_text(text=json.dumps(output))]
-        )
-
+        
     # Rule 5: Confident results recommendation
     recommendation_lines = ["Here are the verified resources that match your needs:\n"]
     resource_ids = []
@@ -194,28 +266,10 @@ async def enforce_guardrails(callback_context: CallbackContext) -> genai_types.C
         
     recommendation_lines.append(f"\n{disclaimer_text}")
     
-    output = {
+    return {
         "response_text": "\n".join(recommendation_lines),
         "response_type": "resource_recommendation",
         "disclaimer_shown": True,
         "resources_included": resource_ids
     }
-    
-    return genai_types.Content(
-        role="model",
-        parts=[genai_types.Part.from_text(text=json.dumps(output))]
-    )
 
-# Instantiate the Guardrail Agent
-guardrail_agent = Agent(
-    name="guardrail_agent",
-    model="gemini-3.1-flash-lite",
-    instruction="""
-You are the Guardrail Agent for the Mumbai Local Resource Navigator.
-Your job is to read the combined intake and matcher outputs and generate a structured response according to the schema.
-Always generate response_text in the language/register matching detected_language from intake_data (e.g. if 'hindi_devanagari' or 'romanized_hindi', respond in Hindi Devanagari script; if 'hinglish', respond in Hinglish; if 'marathi_devanagari', respond in Marathi; if 'english', respond in English). Never generate the disclaimer, it will be appended verbatim.
-However, a deterministic callback is attached to enforce all rules and formatting constraints precisely.
-""",
-    output_schema=GuardrailOutput,
-    after_agent_callback=enforce_guardrails
-)
