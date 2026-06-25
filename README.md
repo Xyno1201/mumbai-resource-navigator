@@ -185,6 +185,14 @@ python tests/scenarios.py
 
 **Expected score**: `20/20` guardrail checks passed, `6/6` adversarial checks passed, and `18/20` routing accuracy (low-context inputs like `"bijli"` or `"eviction Maharashtra"` correctly match `no_confident_match` to prevent unguided recommendations, which passes the guardrail safety check).
 
+## Running with Docker
+
+```bash
+docker build -t mumbai-resource-navigator .
+docker run -p 8000:8000 --env GEMINI_API_KEY=your_key_here mumbai-resource-navigator
+```
+Then open http://localhost:8000
+
 ## Example conversations
 
 ### 1. English food query → Dharavi result

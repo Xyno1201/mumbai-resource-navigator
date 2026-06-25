@@ -172,3 +172,12 @@
   True routing accuracy is 20/20 when no_confident_match is included as a
   valid expected type for low-context inputs.
 - Results written to docs/eval_results.json with timestamp.
+
+## Session 14 — 24-06-2026 (Pre-recording fixes)
+
+- Refactored Guardrail to pure @node (enforce_guardrails_logic) — D015 resolved.
+- Fixed "tell me more" in adk web: last_shown_resource_ids stored in session state.
+- Fixed area matching: token-based, prevents Parel/Lower Parel false positive.
+- Blended dataset confidence score into match_confidence (0.7/0.3 weighting).
+- Eval suite re-run: 20/20 guardrail, 6/6 adversarial, 20/20 routing (improved
+  from 18/20 pre-fix). Ready to record.

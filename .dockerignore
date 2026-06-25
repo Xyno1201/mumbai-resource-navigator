@@ -1,0 +1,18 @@
+# Virtual environment — never copy into the image
+venv/
+
+# Local secrets — API key must be passed at runtime via --env
+.env
+
+# Python bytecode caches
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# ADK session and state databases
+.adk/
+**/.adk/
+docs/.adk/
+
+# Git history
+.git/
