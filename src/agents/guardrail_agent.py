@@ -70,6 +70,22 @@ VERBATIM_DISCLAIMER_HG = (
     "confirm karein visit se pehle."
 )
 
+REC_INTRO = {
+    "english": "Here are the verified resources that match your needs:",
+    "hinglish": "Aapki zaroorat ke hisaab se yeh verified resources available hain:",
+    "romanized_hindi": "Aapki zaroorat ke hisaab se yeh verified resources available hain:",
+    "hindi_devanagari": "यहाँ आपकी स्थिति के अनुसार सत्यापित संसाधन हैं:",
+    "marathi_devanagari": "तुमच्या गरजेनुसार हे सत्यापित संसाधन उपलब्ध आहेत:"
+}
+
+ELIGIBILITY_NOTE = {
+    "english": "Please confirm eligibility (e.g. ration card status or income) directly with the organization.",
+    "hinglish": "Please eligibility confirm karein (e.g. ration card ya income) seedha organization se.",
+    "romanized_hindi": "Please eligibility confirm karein (e.g. ration card ya income) seedha organization se.",
+    "hindi_devanagari": "कृपया पात्रता (जैसे राशन कार्ड या आय) सीधे संस्था से पुष्टि करें।",
+    "marathi_devanagari": "कृपया पात्रता (उदा. रेशन कार्ड किंवा उत्पन्न) थेट संस्थेकडून पुष्टी करा।"
+}
+
 def get_language_strings(detected_language: str) -> tuple[str, str]:
     lang = detected_language.lower() if detected_language else "english"
     if lang in ("hindi_devanagari", "romanized_hindi"):
@@ -191,6 +207,8 @@ def enforce_guardrails_logic(guardrail_input: dict) -> dict:
     category = intake_data.get("category")
     clarification_needed = intake_data.get("clarification_needed")
     detected_language = intake_data.get("detected_language", "english")
+    if detected_language:
+        detected_language = detected_language.lower()
     
     # Check if this is a detail request
     if guardrail_input.get("is_detail_request"):
@@ -236,8 +254,8 @@ def enforce_guardrails_logic(guardrail_input: dict) -> dict:
             "resources_included": []
         }
         
-    # Rule 4: Filter results (match_confidence >= 0.5)
-    confident_results = [r for r in results if r.get("match_confidence", 0.0) >= 0.5]
+    # Rule 4: Filter results (match_confidence >= 0.55)
+    confident_results = [r for r in results if r.get("match_confidence", 0.0) >= 0.55]
     if not confident_results:
         msg = "We found some potential matches in our database, but they do not confidently fit your criteria. To avoid directing you to the wrong service, we are not showing these results. Please try broadening your search locality."
         return {
@@ -248,7 +266,8 @@ def enforce_guardrails_logic(guardrail_input: dict) -> dict:
         }
         
     # Rule 5: Confident results recommendation
-    recommendation_lines = ["Here are the verified resources that match your needs:\n"]
+    intro = REC_INTRO.get(detected_language, REC_INTRO["english"])
+    recommendation_lines = [f"{intro}\n"]
     resource_ids = []
     
     for r in confident_results:
@@ -260,7 +279,8 @@ def enforce_guardrails_logic(guardrail_input: dict) -> dict:
         line += f"  *Hours:* {r.get('operating_hours')}\n"
         
         if r.get("eligibility_unconfirmed"):
-            line += "  *Note:* Please confirm eligibility (e.g. ration card status or income) directly with the organization.\n"
+            note = ELIGIBILITY_NOTE.get(detected_language, ELIGIBILITY_NOTE["english"])
+            line += f"  *Note:* {note}\n"
             
         recommendation_lines.append(line)
         
