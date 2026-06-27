@@ -4,10 +4,6 @@ import json
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional, Dict, Any
 
-from google.adk.agents import Agent
-from google.adk.agents.callback_context import CallbackContext
-from google.genai import types as genai_types
-
 # Define Pydantic schema for structured output of the Guardrail Agent
 class GuardrailOutput(BaseModel):
     response_text: str = Field(
