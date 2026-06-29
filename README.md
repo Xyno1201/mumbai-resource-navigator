@@ -1,4 +1,4 @@
-# Mumbai Local Resource Navigator
+# ReliefNet — Civic Aid Navigator
 ### Agents for Good · Kaggle x Google 5-Day AI Agents Capstone
 
 ---
@@ -8,7 +8,7 @@ portal, speaking bureaucratic English, or having reliable internet. It should
 work the way a knowledgeable neighbor works — you describe your situation, 
 they point you somewhere real.
 
-**Mumbai Local Resource Navigator** is a multilingual AI assistant that does 
+**ReliefNet — Civic Aid Navigator** is a multilingual AI assistant that does 
 exactly this. A resident describes their situation in plain language — in 
 English, Hindi, Marathi, or Hinglish — and the system finds verified local 
 organizations for two categories where need is most acute: **Food Security** 
@@ -59,7 +59,7 @@ Intake → Matcher (calls MCP `search_resources`) → Guardrail → response.
 ## Project structure
 
 ```text
-mumbai-resource-navigator/
+reliefnet-civic-aid-navigator/
 ├── docs/                             # Project decisions, logs, and evaluation results
 │   ├── DECISIONS.md                  # Detailed architectural log and design choices (D001-D018)
 │   ├── eval_results.json             # Scored logs from the 20-scenario evaluation suite
@@ -95,8 +95,8 @@ mumbai-resource-navigator/
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/Xyno1201/mumbai-resource-navigator.git
-cd mumbai-resource-navigator
+git clone https://github.com/Xyno1201/reliefnet-civic-aid-navigator.git
+cd reliefnet-civic-aid-navigator
 ```
 
 ### 3. Set up virtual environment
@@ -188,10 +188,17 @@ python tests/scenarios.py
 ## Running with Docker
 
 ```bash
-docker build -t mumbai-resource-navigator .
-docker run -p 8000:8000 --env GEMINI_API_KEY=your_key_here mumbai-resource-navigator
+docker build -t reliefnet-civic-aid-navigator .
+docker run -p 8000:8000 --env GEMINI_API_KEY=your_key_here reliefnet-civic-aid-navigator
 ```
 Then open http://localhost:8000
+
+## Running the custom UI (ReliefNet interface)
+```bash
+pip install fastapi uvicorn[standard]
+python src/api.py
+```
+Then open http://localhost:8080
 
 ## Example conversations
 

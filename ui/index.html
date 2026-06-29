@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ReliefNet — Civic Aid Navigator for Mumbai. Find food security and emergency housing assistance.">
+  <title>ReliefNet — Civic Aid Navigator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #060e1a;
+      color: #e8f4f8;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background-color: #0a1628;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-left svg {
+      width: 32px;
+      height: 32px;
+      fill: #00c9a7;
+    }
+
+    .header-title-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-title-group h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #e8f4f8;
+      line-height: 1.2;
+    }
+
+    .header-title-group .subtitle {
+      font-size: 11px;
+      color: #8fa8ba;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-new-chat {
+      background: transparent;
+      border: 1px solid #00c9a7;
+      color: #00c9a7;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-new-chat:hover {
+      background-color: rgba(0, 201, 167, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .btn-new-chat:active {
+      transform: translateY(0);
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 90px 20px 100px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #0f2035;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Welcome view container */
+    .welcome-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      margin-top: 20px;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .welcome-icon-wrapper {
+      background-color: rgba(0, 201, 167, 0.08);
+      border: 1px solid rgba(0, 201, 167, 0.15);
+      border-radius: 50%;
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .welcome-icon-wrapper svg {
+      width: 64px;
+      height: 64px;
+      fill: #00c9a7;
+    }
+
+    .welcome-container h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: #e8f4f8;
+      margin-bottom: 8px;
+    }
+
+    .welcome-container .welcome-subtitle {
+      font-size: 14px;
+      color: #8fa8ba;
+      margin-bottom: 30px;
+      max-width: 480px;
+      line-height: 1.5;
+    }
+
+    .suggestion-chips {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .chip {
+      background-color: #162d45;
+      border: 1px solid rgba(255,255,255,0.07);
+      color: #8fa8ba;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .chip:hover {
+      background-color: #1e3a52;
+      border-color: #00c9a7;
+      color: #e8f4f8;
+      transform: translateY(-1px);
+    }
+
+    /* Messages styling */
+    .message {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      animation: messageSlideIn 0.3s ease-out;
+    }
+
+    @keyframes messageSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* User messages on the right */
+    .message.user {
+      align-items: flex-end;
+    }
+
+    .message.user .bubble {
+      background-color: rgba(0,201,167,0.08);
+      border: 1px solid rgba(0,201,167,0.25);
+      color: #00c9a7;
+      padding: 12px 16px;
+      border-radius: 16px;
+      border-bottom-right-radius: 4px;
+      max-width: 80%;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    /* Assistant messages directly rendered with language pill */
+    .message.assistant {
+      align-items: flex-start;
+    }
+
+    .lang-pill-row {
+      margin-bottom: 6px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .lang-badge {
+      background-color: rgba(0,201,167,0.1);
+      border: 1px solid rgba(0,201,167,0.2);
+      color: #00c9a7;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .assistant-card {
+      background-color: #162d45;
+      border: 1px solid #1e3a52;
+      border-radius: 12px;
+      width: 100%;
+      padding: 18px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .intro-text {
+      color: #8fa8ba;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Resource recommended cards inside card */
+    .resource-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .resource-card {
+      background-color: #0f2035;
+      border: 1px solid #1e3a52;
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.2s ease;
+    }
+
+    .resource-card:hover {
+      border-color: #00c9a7;
+    }
+
+    .resource-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .resource-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e8f4f8;
+      line-height: 1.3;
+    }
+
+    .resource-id-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: #8fa8ba;
+      background-color: #162d45;
+      border: 1px solid rgba(255,255,255,0.05);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .resource-desc {
+      font-size: 13px;
+      color: #8fa8ba;
+      line-height: 1.4;
+    }
+
+    .resource-contact-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: #8fa8ba;
+      padding-top: 4px;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .contact-item svg {
+      width: 14px;
+      height: 14px;
+      fill: #4a6678;
+    }
+
+    .contact-item a {
+      color: #00c9a7;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .contact-item a:hover {
+      text-decoration: underline;
+    }
+
+    .warning-box {
+      background-color: rgba(255,167,38,0.08);
+      border: 1px solid rgba(255,167,38,0.25);
+      color: #ffa726;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .warning-box svg {
+      width: 14px;
+      height: 14px;
+      fill: #ffa726;
+      flex-shrink: 0;
+    }
+
+    .disclaimer {
+      font-size: 11px;
+      font-style: italic;
+      color: #4a6678;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 12px;
+      line-height: 1.4;
+    }
+
+    /* Crisis response card styles */
+    .crisis-card {
+      background-color: rgba(255,71,87,0.10);
+      border: 1px solid rgba(255,71,87,0.30);
+      border-radius: 12px;
+      width: 100%;
+      padding: 18px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .crisis-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .crisis-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #ff4757;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .crisis-label svg {
+      width: 16px;
+      height: 16px;
+      fill: #ff4757;
+    }
+
+    .crisis-text {
+      color: #e8f4f8;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .crisis-numbers-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .btn-emergency {
+      background: transparent;
+      border: 1px solid rgba(255,71,87,0.3);
+      color: #ff4757;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-emergency:hover {
+      background-color: rgba(255,71,87,0.10);
+      border-color: #ff4757;
+      transform: translateY(-1px);
+    }
+
+    /* Clarification card style */
+    .clarification-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .clarification-card svg {
+      width: 20px;
+      height: 20px;
+      fill: #00c9a7;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .clarification-text {
+      color: #e8f4f8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Zero results / No confident match left border orange */
+    .no-results-card {
+      border-left: 3px solid #ff6b35 !important;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .no-results-card svg {
+      width: 20px;
+      height: 20px;
+      fill: #ff6b35;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .no-results-text {
+      color: #8fa8ba;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Collapsible pipeline steps */
+    details {
+      margin-top: 4px;
+      width: 100%;
+    }
+
+    summary {
+      font-size: 11px;
+      color: #4a6678;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 600;
+      outline: none;
+      padding: 4px 0;
+      transition: color 0.2s ease;
+    }
+
+    summary:hover {
+      color: #8fa8ba;
+    }
+
+    .pipeline-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 0 4px 0;
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .pipeline-step {
+      flex: 1;
+      min-width: 120px;
+      background-color: #0a1628;
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pipeline-step-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .pipeline-step-header svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .pipeline-step.done {
+      border-color: rgba(0,201,167,0.25);
+      background-color: rgba(0,201,167,0.02);
+    }
+    .pipeline-step.done .pipeline-step-header {
+      color: #00c9a7;
+    }
+    .pipeline-step.done svg {
+      fill: #00c9a7;
+    }
+
+    .pipeline-step.fallback {
+      border-color: rgba(255,167,38,0.25);
+      background-color: rgba(255,167,38,0.02);
+    }
+    .pipeline-step.fallback .pipeline-step-header {
+      color: #ffa726;
+    }
+    .pipeline-step.fallback svg {
+      fill: #ffa726;
+    }
+
+    .pipeline-step.skipped {
+      border-color: rgba(255,255,255,0.03);
+      background-color: #1e3a52;
+    }
+    .pipeline-step.skipped .pipeline-step-header {
+      color: #4a6678;
+    }
+    .pipeline-step.skipped svg {
+      fill: #4a6678;
+    }
+
+    .pipeline-step-detail {
+      font-size: 9px;
+      color: #8fa8ba;
+    }
+
+    .pipeline-arrow {
+      color: #4a6678;
+      font-size: 14px;
+      user-select: none;
+      font-weight: 700;
+    }
+
+    /* Error Card */
+    .error-card {
+      background-color: rgba(255,107,53,0.08);
+      border: 1px solid rgba(255,107,53,0.25);
+      color: #ff6b35;
+      border-radius: 12px;
+      width: 100%;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .error-card svg {
+      width: 20px;
+      height: 20px;
+      fill: #ff6b35;
+      flex-shrink: 0;
+    }
+
+    /* Footer styling */
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: #0a1628;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 14px 20px;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+    }
+
+    .input-container {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background-color: #162d45;
+      border: 1px solid #1e3a52;
+      border-radius: 16px;
+      padding: 6px 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: border-color 0.2s ease;
+    }
+
+    .input-container:focus-within {
+      border-color: #00c9a7;
+    }
+
+    textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e8f4f8;
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+      height: 24px;
+      max-height: 120px;
+      padding: 3px 0;
+      line-height: 1.4;
+    }
+
+    textarea::placeholder {
+      color: #8fa8ba;
+    }
+
+    .btn-send {
+      background-color: #00c9a7;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      flex-shrink: 0;
+      margin-bottom: 1px;
+    }
+
+    .btn-send:hover {
+      background-color: #009f85;
+    }
+
+    .btn-send:active {
+      transform: scale(0.92);
+    }
+
+    .btn-send:disabled {
+      background-color: #1e3a52;
+      cursor: not-allowed;
+    }
+
+    .btn-send svg {
+      width: 14px;
+      height: 14px;
+      fill: #060e1a;
+    }
+
+    /* Typing indicator styling */
+    .typing-card {
+      background-color: #162d45;
+      border: 1px solid #1e3a52;
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #00c9a7;
+      border-radius: 50%;
+      opacity: 0.4;
+      animation: typingBounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingBounce {
+      0%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+      }
+      50% {
+        transform: translateY(-4px);
+        opacity: 1;
+      }
+    }
+
+    /* SVG helper styling */
+    .icon-inline {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .card-apply { margin-top: 10px; }
+    .card-apply-label { font-size: 11px; font-weight: 500; 
+      color: #00c9a7; margin-bottom: 4px; }
+    .card-apply-steps { margin: 0; padding-left: 18px; 
+      font-size: 12px; color: #8fa8ba; }
+    .card-apply-steps li { margin-bottom: 2px; }
+    .card-docs { font-size: 12px; color: #8fa8ba; margin-top: 6px; }
+    .card-docs-label { font-weight: 500; color: #e8f4f8; }
+    .card-notes { font-size: 12px; color: #8fa8ba; margin-top: 6px; 
+      font-style: italic; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <!-- Shield logo SVG -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3zm0 6c1.66 0 3 1.34 3 3 0 1.09-.58 2.04-1.46 2.56L15 17H9l1.46-3.44C9.58 13.04 9 12.09 9 11c0-1.66 1.34-3 3-3z"/>
+      </svg>
+      <div class="header-title-group">
+        <h1>ReliefNet</h1>
+        <div class="subtitle">Civic Aid Navigator · Mumbai</div>
+      </div>
+    </div>
+    <button class="btn-new-chat" id="btnNewChat" onclick="newConversation()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      New conversation
+    </button>
+  </header>
+
+  <main>
+    <div class="chat-container" id="chatArea">
+      <!-- Dynamic Welcome message or messages list -->
+    </div>
+  </main>
+
+  <footer>
+    <div class="input-container">
+      <textarea id="queryInput" placeholder="Message ReliefNet..." rows="1" oninput="autoResizeTextarea(this)"></textarea>
+      <button class="btn-send" id="btnSend" onclick="sendMessage()" disabled>
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+  </footer>
+
+  <script>
+    let sessionId = null;
+    let isLoading = false;
+
+    const chatArea = document.getElementById('chatArea');
+    const queryInput = document.getElementById('queryInput');
+    const btnSend = document.getElementById('btnSend');
+
+    // Focus input on page load
+    window.addEventListener('load', () => {
+      newConversation();
+      queryInput.focus();
+    });
+
+    // Auto resize textarea up to 120px
+    function autoResizeTextarea(textarea) {
+      textarea.style.height = 'auto';
+      const scrollHeight = textarea.scrollHeight;
+      textarea.style.height = Math.min(scrollHeight - 6, 120) + 'px';
+      
+      // Enable/disable send button based on trimmed content
+      btnSend.disabled = !textarea.value.trim() || isLoading;
+    }
+
+    // Trigger send on Enter (but Shift+Enter inserts newline)
+    queryInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Append User Message bubble
+    function appendUserMessage(text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message user';
+      msgDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+      chatArea.appendChild(msgDiv);
+      scrollToBottom();
+    }
+
+    // Escape HTML helper
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Scroll chat area to bottom
+    function scrollToBottom() {
+      const main = document.querySelector('main');
+      main.scrollTo({
+        top: main.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+
+    // Show Typing Indicator
+    function showTypingIndicator() {
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'message assistant';
+      typingDiv.id = 'typingIndicator';
+      typingDiv.innerHTML = `
+        <div class="typing-card">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      `;
+      chatArea.appendChild(typingDiv);
+      scrollToBottom();
+    }
+
+    // Remove Typing Indicator
+    function removeTypingIndicator() {
+      const indicator = document.getElementById('typingIndicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    // Build the collapsible pipeline details
+    function renderPipelineSteps(steps) {
+      if (!steps || steps.length === 0) return '';
+      
+      const checkIcon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+      const warningIcon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`;
+      const skipIcon = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>`;
+
+      let stepsHtml = '';
+      steps.forEach((step, index) => {
+        let statusClass = 'skipped';
+        let icon = skipIcon;
+        if (step.status === 'done') {
+          statusClass = 'done';
+          icon = checkIcon;
+        } else if (step.status === 'fallback') {
+          statusClass = 'fallback';
+          icon = warningIcon;
+        }
+
+        stepsHtml += `
+          <div class="pipeline-step ${statusClass}">
+            <div class="pipeline-step-header">
+              ${icon}
+              ${step.name}
+            </div>
+            <div class="pipeline-step-detail">${step.detail}</div>
+          </div>
+        `;
+
+        if (index < steps.length - 1) {
+          stepsHtml += `<span class="pipeline-arrow">→</span>`;
+        }
+      });
+
+      return `
+        <details>
+          <summary>▸ Pipeline steps</summary>
+          <div class="pipeline-container">
+            ${stepsHtml}
+          </div>
+        </details>
+      `;
+    }
+
+    // Render formatted markdown-like bold strings inside text responses
+    function formatMarkdown(text) {
+      if (!text) return '';
+      // Escape HTML first
+      let clean = escapeHtml(text);
+      // Replace **bold** with <strong>bold</strong>
+      clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      // Replace - bullet lines
+      clean = clean.split('\n').map(line => {
+        if (line.trim().startsWith('- ')) {
+          return `<li style="margin-left: 20px; margin-bottom: 4px; font-size: 13.5px; line-height: 1.4;">${line.trim().substring(2)}</li>`;
+        }
+        if (line.trim().startsWith('*Service:*') || line.trim().startsWith('*Hours:*') || line.trim().startsWith('*Note:*')) {
+          return `<div style="margin-left: 20px; font-size: 13px; margin-bottom: 4px; line-height: 1.4;">${line}</div>`;
+        }
+        return line;
+      }).join('\n');
+
+      return clean.replace(/\n/g, '<br>');
+    }
+
+    // Render responses
+    function renderAssistantMessage(data) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message assistant';
+      
+      const langBadge = data.detected_language ? `<div class="lang-badge">${data.detected_language}</div>` : '';
+      
+      let cardBody = '';
+      
+      if (data.response_type === 'resource_recommendation') {
+        let cardsHtml = '';
+        if (data.resource_cards && data.resource_cards.length > 0) {
+          data.resource_cards.forEach(card => {
+            let contactsHtml = '';
+            if (card.hours) {
+              contactsHtml += `
+                <div class="contact-item">
+                  <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                  <span>${escapeHtml(card.hours)}</span>
+                </div>
+              `;
+            }
+            if (card.phone) {
+              contactsHtml += `
+                <div class="contact-item">
+                  <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.58l2.2-2.21c.28-.27.36-.66.25-1.01C8.8 6.45 8.6 5.25 8.6 4.02c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.62 17 17 17 .55 0 1-.45 1-1v-3.58c0-.56-.45-1.04-1-1.04z"/></svg>
+                  <a href="tel:${escapeHtml(card.phone)}">${escapeHtml(card.phone)}</a>
+                </div>
+              `;
+            }
+            if (card.website) {
+              contactsHtml += `
+                <div class="contact-item">
+                  <svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                  <a href="${escapeHtml(card.website)}" target="_blank">Website</a>
+                </div>
+              `;
+            }
+            if (card.address) {
+              contactsHtml += `
+                <div class="contact-item">
+                  <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                  <span>${escapeHtml(card.address)}</span>
+                </div>
+              `;
+            }
+
+            let warningBox = '';
+            if (card.eligibility_unconfirmed) {
+              warningBox = `
+                <div class="warning-box">
+                  <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  <span>Please confirm eligibility directly with the organization.</span>
+                </div>
+              `;
+            }
+
+            let detailsHtml = '';
+            if (card.application_process && card.application_process.length > 0) {
+              const steps = card.application_process.map(step => `<li>${escapeHtml(step)}</li>`).join('');
+              detailsHtml += `
+                <div class="card-apply">
+                  <div class="card-apply-label">How to apply</div>
+                  <ol class="card-apply-steps">
+                    ${steps}
+                  </ol>
+                </div>
+              `;
+            }
+            if (card.docs_required && card.docs_required.length > 0 && card.docs_required[0] !== 'none') {
+              detailsHtml += `
+                <div class="card-docs">
+                  <span class="card-docs-label">Documents needed:</span>
+                  <span class="card-docs-list">${escapeHtml(card.docs_required.join(', '))}</span>
+                </div>
+              `;
+            }
+            if (card.special_notes && card.special_notes.trim() !== '') {
+              detailsHtml += `
+                <div class="card-notes">📌 ${escapeHtml(card.special_notes)}</div>
+              `;
+            }
+
+            cardsHtml += `
+              <div class="resource-card">
+                <div class="resource-top-row">
+                  <span class="resource-name">${escapeHtml(card.name)}</span>
+                  <span class="resource-id-badge">${escapeHtml(card.resource_id)}</span>
+                </div>
+                <div class="resource-desc">${escapeHtml(card.description)}</div>
+                <div class="resource-contact-row">${contactsHtml}</div>
+                ${detailsHtml}
+                ${warningBox}
+              </div>
+            `;
+          });
+        }
+
+        // Split off disclaimer from response text to format correctly
+        let mainText = data.response_text || '';
+        let disclaimerText = '';
+        const disclaimerIndex = mainText.toLowerCase().lastIndexOf("this is informational");
+        const hingesDisclaimerIndex = mainText.toLowerCase().lastIndexOf("yeh sirf informational");
+        const targetIndex = disclaimerIndex !== -1 ? disclaimerIndex : hingesDisclaimerIndex;
+        
+        if (targetIndex !== -1) {
+          disclaimerText = mainText.substring(targetIndex);
+          mainText = mainText.substring(0, targetIndex).trim();
+        }
+
+        let displayedText = mainText;
+        if (data.resource_cards && data.resource_cards.length > 0) {
+          let introLine = data.response_text.split('\n')[0]
+            .replace(/\*\*/g, '').replace(':', '').trim();
+          if (introLine.toLowerCase().startsWith('resource name')) {
+            introLine = '';
+          }
+          displayedText = introLine;
+        }
+
+        cardBody = `
+          <div class="assistant-card">
+            ${displayedText ? `<div class="intro-text">${formatMarkdown(displayedText)}</div>` : ''}
+            <div class="resource-list">${cardsHtml}</div>
+            ${renderPipelineSteps(data.pipeline_steps)}
+            ${disclaimerText ? `<div class="disclaimer">${escapeHtml(disclaimerText)}</div>` : ''}
+          </div>
+        `;
+      } 
+      else if (data.response_type === 'crisis_redirect') {
+        const phoneIcon = `<svg viewBox="0 0 24 24" class="icon-inline" style="width:14px;height:14px;fill:currentColor;"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.58l2.2-2.21c.28-.27.36-.66.25-1.01C8.8 6.45 8.6 5.25 8.6 4.02c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.62 17 17 17 .55 0 1-.45 1-1v-3.58c0-.56-.45-1.04-1-1.04z"/></svg>`;
+        const warnIcon = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+        cardBody = `
+          <div class="crisis-card">
+            <div class="crisis-top-row">
+              <div class="crisis-label">
+                ${warnIcon}
+                Emergency resources
+              </div>
+            </div>
+            <div class="crisis-text">${formatMarkdown(data.response_text)}</div>
+            <div class="crisis-numbers-row">
+              <a href="tel:100" class="btn-emergency">${phoneIcon} 100 Police</a>
+              <a href="tel:108" class="btn-emergency">${phoneIcon} 108 Ambulance</a>
+              <a href="tel:14416" class="btn-emergency">${phoneIcon} 14416 Tele-MANAS</a>
+            </div>
+            ${renderPipelineSteps(data.pipeline_steps)}
+          </div>
+        `;
+      } 
+      else if (data.response_type === 'clarification_request') {
+        const chatIcon = `<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>`;
+        cardBody = `
+          <div class="assistant-card clarification-card">
+            ${chatIcon}
+            <div class="clarification-text">${formatMarkdown(data.response_text)}</div>
+          </div>
+        `;
+      }
+      else if (data.response_type === 'zero_results' || data.response_type === 'no_confident_match') {
+        const offIcon = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+        cardBody = `
+          <div class="assistant-card no-results-card">
+            ${offIcon}
+            <div>
+              <div class="no-results-text">${formatMarkdown(data.response_text)}</div>
+              ${renderPipelineSteps(data.pipeline_steps)}
+            </div>
+          </div>
+        `;
+      }
+
+      msgDiv.innerHTML = `
+        <div class="lang-pill-row">${langBadge}</div>
+        ${cardBody}
+      `;
+
+      chatArea.appendChild(msgDiv);
+      scrollToBottom();
+    }
+
+    // Render Orange Error Card
+    function renderErrorMessage() {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message assistant';
+      const errorIcon = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+      msgDiv.innerHTML = `
+        <div class="error-card">
+          ${errorIcon}
+          <span>Something went wrong — please try again.</span>
+        </div>
+      `;
+      chatArea.appendChild(msgDiv);
+      scrollToBottom();
+    }
+
+    // Send chat message
+    async function sendMessage() {
+      const query = queryInput.value.trim();
+      if (!query || isLoading) return;
+
+      isLoading = true;
+      queryInput.disabled = true;
+      btnSend.disabled = true;
+
+      // Append user bubble
+      appendUserMessage(query);
+      
+      // Clear welcome container if first message
+      const welcome = document.getElementById('welcomeScreen');
+      if (welcome) {
+        welcome.remove();
+      }
+
+      // Reset textarea height
+      queryInput.value = '';
+      queryInput.style.height = 'auto';
+
+      // Show typing status
+      showTypingIndicator();
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            query: query,
+            session_id: sessionId
+          })
+        });
+
+        const data = await response.json();
+        
+        removeTypingIndicator();
+        
+        if (data.session_id) {
+          sessionId = data.session_id;
+        }
+
+        renderAssistantMessage(data);
+
+      } catch (err) {
+        removeTypingIndicator();
+        renderErrorMessage();
+      } finally {
+        isLoading = false;
+        queryInput.disabled = false;
+        btnSend.disabled = !queryInput.value.trim();
+        queryInput.focus();
+      }
+    }
+
+    // Suggest chip sender
+    function sendSuggestedText(text) {
+      queryInput.value = text;
+      autoResizeTextarea(queryInput);
+      sendMessage();
+    }
+
+    // New conversation trigger
+    function newConversation() {
+      sessionId = null;
+      chatArea.innerHTML = `
+        <div class="welcome-container" id="welcomeScreen">
+          <div class="welcome-icon-wrapper">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3zm0 6c1.66 0 3 1.34 3 3 0 1.09-.58 2.04-1.46 2.56L15 17H9l1.46-3.44C9.58 13.04 9 12.09 9 11c0-1.66 1.34-3 3-3z"/>
+            </svg>
+          </div>
+          <h2>How can we help you today?</h2>
+          <div class="welcome-subtitle">Describe your situation in English, Hindi, Marathi, or Hinglish</div>
+          <div class="suggestion-chips">
+            <button class="chip" onclick="sendSuggestedText('I need food help near Dharavi')">
+              I need food help near Dharavi
+            </button>
+            <button class="chip" onclick="sendSuggestedText('bijli bill ka problem hai, Govandi mein hun')">
+              bijli bill ka problem hai, Govandi mein hun
+            </button>
+            <button class="chip" onclick="sendSuggestedText('मुझे किराये में मदद चाहिए')">
+              मुझे किराये में मदद चाहिए
+            </button>
+          </div>
+        </div>
+      `;
+      queryInput.value = '';
+      autoResizeTextarea(queryInput);
+      queryInput.focus();
+    }
+  </script>
+</body>
+</html>

@@ -444,7 +444,7 @@ async def run_guardrail(ctx: Context, node_input: Any = None) -> Event:
     return Event(output=result, state=state)
 
 
-# Instantiate the Workflow representing the full Mumbai Resource Navigator agent
+# Instantiate the Workflow representing the full ReliefNet — Civic Aid Navigator agent
 mumbai_navigator_workflow = Workflow(
     name="mumbai_navigator_workflow",
     edges=[
@@ -475,18 +475,17 @@ async def run_navigator(
     actual_session_id = existing_session_id or session_id
     
     session = None
-    if existing_session_id:
+    try:
         session = await session_service.get_session(
-            app_name="app",
-            user_id="test_user",
-            session_id=actual_session_id
+            app_name="app", user_id="test_user", session_id=actual_session_id
         )
-        
-    if not session:
+        if not session:
+            session = await session_service.create_session(
+                app_name="app", user_id="test_user", session_id=actual_session_id
+            )
+    except Exception:
         session = await session_service.create_session(
-            app_name="app",
-            user_id="test_user",
-            session_id=actual_session_id
+            app_name="app", user_id="test_user", session_id=actual_session_id
         )
         
     history = session.state.get("conversation_history", []) if session else []
